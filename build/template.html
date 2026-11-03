@@ -1,0 +1,804 @@
+<meta charset="utf-8">
+<title>論文コレクション デモ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Plain working tool. Header + text tabs; each mode is one column of controls, chart, table. */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f7f9;
+  --fg: #16181d;
+  --muted: #5f6672;
+  --line: #e3e6ea;
+  --strong-line: #c9ced6;
+  --accent: #256abf;
+  --mark: #fff1a8;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --s0: #8a919c;
+  --font: "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #121417; --surface: #1a1d22; --fg: #e7e9ec; --muted: #9aa1ab; --line: #2b3038; --strong-line: #3b424c; --accent: #6da7ec; --mark: #5a4b00; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s0: #7d8591; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #121417; --surface: #1a1d22; --fg: #e7e9ec; --muted: #9aa1ab; --line: #2b3038; --strong-line: #3b424c; --accent: #6da7ec; --mark: #5a4b00; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s0: #7d8591; color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.75; margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3, h4 { font-weight: 700; margin: 0; line-height: 1.45; word-break: auto-phrase; text-wrap: balance; }
+h1 { font-size: 16px; letter-spacing: .01em; }
+h2 { font-size: 19px; }
+h3 { font-size: 15px; }
+h4 { font-size: 13.5px; }
+p { margin: 0; }
+ul, ol { margin: 0; }
+a, .lk { color: var(--accent); text-decoration: none; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; text-align: left; }
+a:hover, .lk:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+mark { background: var(--mark); color: inherit; padding: 0 1px; }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+.mono { font-family: var(--mono); font-size: 12px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* header */
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.hrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding-block: 12px 0; }
+.hrow .sp { flex: 1 1 auto; }
+select, input[type="text"], input[type="search"], input[type="number"] { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--strong-line); border-radius: 4px; padding: 5px 8px; }
+.hbtn { font: inherit; font-size: 13px; color: var(--fg); background: var(--bg); border: 1px solid var(--strong-line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+.hbtn[aria-pressed="true"] { border-color: var(--fg); font-weight: 700; }
+nav.tabs { display: flex; gap: 24px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+nav.tabs button { font: inherit; color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 0 9px; cursor: pointer; white-space: nowrap; }
+nav.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 700; }
+
+main { padding-block: 26px 56px; }
+.view { display: grid; gap: 22px; min-width: 0; }
+.view > * { min-width: 0; }
+.vhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 20px; }
+.lead { color: var(--muted); max-width: 72ch; }
+.block { display: grid; gap: 10px; min-width: 0; }
+.rule { border-top: 1px solid var(--line); }
+
+/* controls */
+.bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.btn { font: inherit; font-size: 13.5px; color: var(--fg); background: var(--surface); border: 1px solid var(--strong-line); border-radius: 4px; padding: 5px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--strong-line); border-radius: 4px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; color: var(--muted); background: var(--bg); border: 0; border-right: 1px solid var(--line); padding: 5px 12px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); }
+label.cb { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+input[type="checkbox"] { accent-color: var(--accent); }
+
+/* tables */
+.scroll { overflow-x: auto; }
+table.t { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.t th, table.t td { border-bottom: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+table.t thead th { color: var(--muted); font-weight: 500; font-size: 12px; background: var(--surface); border-bottom-color: var(--strong-line); white-space: nowrap; }
+table.t td.n, table.t th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+dl.kv { display: grid; grid-template-columns: 9em 1fr; gap: 6px 18px; margin: 0; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; }
+
+/* search */
+.peek td:first-child { white-space: nowrap; }
+ol.hits { list-style: none; margin: 0; padding: 0; }
+ol.hits li { border-bottom: 1px solid var(--line); padding: 12px 0; display: grid; gap: 3px; }
+.where { font-size: 12.5px; color: var(--muted); }
+.sec-label { display: inline-block; min-width: 3.5em; color: var(--fg); font-weight: 500; }
+
+/* chart */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { fill: var(--muted); font-family: var(--font); font-size: 11px; }
+.chart .lbl { fill: var(--fg); }
+.tip { position: absolute; pointer-events: none; background: var(--bg); color: var(--fg); border: 1px solid var(--strong-line); border-radius: 4px; padding: 6px 9px; font-size: 12px; line-height: 1.5; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 3; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+
+/* knowledge graph */
+table.mx { border-collapse: separate; border-spacing: 2px; font-size: 12px; }
+table.mx th { font-weight: 500; color: var(--muted); padding: 4px 6px; white-space: nowrap; }
+table.mx thead th { vertical-align: bottom; text-align: left; height: 128px; }
+table.mx thead th span { display: inline-block; writing-mode: vertical-rl; text-orientation: mixed; }
+table.mx tbody th { text-align: right; color: var(--fg); }
+table.mx th.grp { color: var(--fg); font-weight: 700; text-align: left; }
+table.mx td { width: 34px; min-width: 34px; height: 28px; text-align: center; font-variant-numeric: tabular-nums; border-radius: 3px; cursor: pointer; color: var(--fg); }
+table.mx td.z { color: var(--muted); cursor: default; }
+table.mx td.sel { outline: 2px solid var(--fg); outline-offset: -2px; }
+.ev { display: grid; gap: 10px; }
+ol.evl { list-style: none; padding: 0; display: grid; }
+ol.evl li { border-bottom: 1px solid var(--line); padding: 9px 0; display: grid; gap: 2px; }
+.kgrid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 900px) { .kgrid { grid-template-columns: minmax(0, 1fr); } }
+.graph svg text { font-size: 11.5px; }
+.graph .node { cursor: pointer; }
+
+/* QA */
+.qa { display: grid; gap: 14px; max-width: 840px; }
+.qa .q { font-weight: 700; font-size: 15.5px; }
+.qa ul { padding-left: 1.2em; display: grid; gap: 9px; }
+.qa sup { font-size: 11px; }
+ol.cites { padding-left: 1.6em; display: grid; gap: 12px; font-size: 13px; }
+ol.cites .ctx { color: var(--muted); font-size: 12.5px; }
+details summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
+.quote { margin-top: 6px; padding-left: 12px; border-left: 2px solid var(--line); }
+
+/* reader */
+.reader { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 820px) { .reader { grid-template-columns: minmax(0, 1fr); } .toc { position: static !important; max-height: none !important; } }
+.toc { position: sticky; top: 120px; max-height: calc(100vh - 140px); overflow: auto; font-size: 12.5px; display: grid; gap: 3px; padding-right: 8px; }
+.toc .lk { display: block; }
+.toc .l2 { padding-left: 12px; } .toc .l3 { padding-left: 24px; }
+.doc { display: grid; gap: 14px; max-width: 780px; min-width: 0; }
+.doc .title { font-size: 19px; font-weight: 700; line-height: 1.5; }
+.doc h2 { margin-top: 12px; font-size: 16px; } .doc h3 { margin-top: 4px; font-size: 14px; }
+.doc .para { padding: 2px 6px; margin: 0 -6px; border-radius: 3px; }
+.doc .para.hl { background: var(--mark); }
+.tag { font-family: var(--mono); font-size: 11px; color: var(--muted); font-weight: 400; }
+.tblock { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 8px; }
+.tblock.hl { box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; }
+pre.raw { font-family: var(--mono); font-size: 11.5px; background: var(--surface); padding: 10px; overflow-x: auto; margin: 0; white-space: pre-wrap; word-break: break-all; border-radius: 4px; }
+
+/* guide */
+.guide { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 36px; align-items: start; }
+@media (max-width: 820px) { .guide { grid-template-columns: minmax(0, 1fr); } .gnav { position: static !important; } }
+.gnav { position: sticky; top: 120px; display: grid; gap: 4px; font-size: 13px; }
+.gdoc { display: grid; gap: 40px; max-width: 800px; min-width: 0; }
+.gsec { display: grid; gap: 14px; scroll-margin-top: 120px; }
+.gsec h2 { font-size: 20px; }
+.gsec h3 { font-size: 14.5px; margin-top: 6px; }
+.gsec ul, .gsec ol { padding-left: 1.3em; display: grid; gap: 5px; }
+.gsec .one { font-size: 15px; }
+.gsec .demo-link { font-size: 13px; }
+
+footer { border-top: 1px solid var(--line); padding-block: 16px 32px; font-size: 12px; color: var(--muted); }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="hrow">
+      <h1>論文コレクション デモ</h1>
+      <label for="col" class="muted small">コレクション</label>
+      <select id="col"></select>
+      <span class="sp"></span>
+      <button type="button" class="hbtn" id="guide-btn" aria-pressed="false">営業向け解説</button>
+      <button type="button" class="hbtn" id="theme-btn">ダーク表示</button>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button type="button" role="tab" data-tab="overview" aria-selected="true">コレクション</button>
+      <button type="button" role="tab" data-tab="search" aria-selected="false">全文検索</button>
+      <button type="button" role="tab" data-tab="values" aria-selected="false">表から値を集める</button>
+      <button type="button" role="tab" data-tab="kg" aria-selected="false">ナレッジグラフ</button>
+      <button type="button" role="tab" data-tab="qa" aria-selected="false">根拠つき回答</button>
+      <button type="button" role="tab" data-tab="papers" aria-selected="false">論文</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="view" id="v-overview"></section>
+
+  <section class="view" id="v-search" hidden>
+    <div class="vhead"><h2>全文検索</h2><button type="button" class="lk small" data-guide="g-search">このモードの解説</button></div>
+    <p class="lead">同じ語でも、論文のどこに書かれているかで情報の意味が変わります。序論なら他の研究の紹介、方法なら実験条件、結果・考察ならその論文が自ら確かめたことです。全文XMLは段落ごとにセクションの種類が分かるので、目的に合う箇所だけを探せます。</p>
+    <div class="bar">
+      <input type="search" id="q" aria-label="検索語" style="width:min(100%,360px)">
+      <button type="button" class="btn" id="q-go">検索</button>
+      <span class="small muted">英語のキーワード（スペース区切りはAND）</span>
+    </div>
+    <div class="block">
+      <h3>セクション別の見え方</h3>
+      <div class="scroll"><table class="t peek" id="q-peek"></table></div>
+    </div>
+    <div class="block">
+      <div class="bar"><span class="small muted">目的から絞る</span><div class="seg" id="q-purpose"></div></div>
+      <div id="q-sum" class="small"></div>
+      <ol class="hits" id="q-hits"></ol>
+    </div>
+  </section>
+
+  <section class="view" id="v-values" hidden>
+    <div class="vhead"><h2>表から値を集める</h2><button type="button" class="lk small" data-guide="g-values">このモードの解説</button></div>
+    <p class="lead">すべての論文の表から、指定した項目の列を探して値を1つにまとめます。分布を見て、自社の値が文献の中でどこに位置するかを確かめられます。どの値にも、元の論文と表番号が付いています。</p>
+    <div class="bar"><span class="small muted">項目</span><div class="seg" id="v-presets"></div></div>
+    <div class="bar small">
+      <label for="v-re" class="muted">列名の条件（正規表現）</label>
+      <input type="text" id="v-re" style="width:min(100%,320px)">
+      <button type="button" class="btn" id="v-go">集める</button>
+    </div>
+    <div id="v-sum" class="small"></div>
+    <div class="block">
+      <div class="bar">
+        <h3>論文ごとの値の分布</h3>
+        <label for="v-bench" class="small muted">自社の値</label>
+        <input type="number" id="v-bench" step="any" style="width:7em" aria-describedby="v-bench-note">
+        <span class="small" id="v-bench-note"></span>
+      </div>
+      <div class="chart" id="v-chart"></div>
+      <p class="small muted" id="v-chart-note"></p>
+    </div>
+    <div class="block">
+      <div class="bar"><h3>抽出した値</h3><button type="button" class="btn" id="v-copy">TSVをコピー</button><span class="small muted" id="v-copied" role="status"></span></div>
+      <div class="scroll"><table class="t" id="v-table"></table></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-kg" hidden>
+    <div class="vhead"><h2>ナレッジグラフ</h2><button type="button" class="lk small" data-guide="g-kg">このモードの解説</button></div>
+    <p class="lead">論文の文から、添加剤・条件・特性・手法などの要素を取り出し、同じ文で述べられている要素どうしを結びました。どのつながりにも根拠の文が付いています。報告の多い組み合わせ、少ない組み合わせ（空白）、間接的なつながりを見ることができます。</p>
+    <div class="bar">
+      <div class="seg" id="kg-mode">
+        <button type="button" data-kgmode="matrix" aria-pressed="true">組み合わせの一覧</button>
+        <button type="button" data-kgmode="graph" aria-pressed="false">要素を中心に見る</button>
+      </div>
+      <label class="cb small" for="kg-own"><input type="checkbox" id="kg-own" checked>根拠を「結果・考察・結論」の文に限る</label>
+      <button type="button" class="btn" id="kg-copy">つながりをTSVでコピー</button>
+      <span class="small muted" id="kg-copied" role="status"></span>
+    </div>
+    <div id="kg-body"></div>
+    <div class="ev" id="kg-ev"></div>
+  </section>
+
+  <section class="view" id="v-qa" hidden></section>
+  <section class="view" id="v-papers" hidden></section>
+  <section class="view" id="v-guide" hidden></section>
+</main>
+
+<footer><div class="wrap" id="foot"></div></footer>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+(function () {
+  "use strict";
+  var DATA = JSON.parse(document.getElementById("data").textContent);
+  var GUIDE = DATA.__guide; delete DATA.__guide;
+  var CAT = { abstract: "要旨", intro: "序論", methods: "方法", results: "結果", discussion: "考察", conclusion: "結論", other: "その他", table: "表" };
+  var CAT_ORDER = ["abstract", "intro", "methods", "results", "discussion", "conclusion", "other", "table"];
+  var OWN = { results: 1, discussion: 1, conclusion: 1 };
+  var PURPOSES = [
+    ["all", "すべて", CAT_ORDER],
+    ["background", "背景・他の研究（序論）", ["intro"]],
+    ["conditions", "実験の条件（方法）", ["methods"]],
+    ["findings", "その論文の結果（結果・考察・結論）", ["results", "discussion", "conclusion"]],
+    ["numbers", "数値（表）", ["table"]],
+    ["abstract", "要旨", ["abstract"]]
+  ];
+  var SPLIT = /(?<=[.!?])\s+(?=[A-Z(\[])/;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+  var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+  var state = { col: Object.keys(DATA)[0], tab: "overview", guide: false, paper: null, focus: null, purpose: "all", preset: 0, qa: 0,
+    kgmode: "matrix", own: true, cell: null, center: null, evShown: 30 };
+  var C = function () { return DATA[state.col]; };
+  var byId = function (pid) { return C().papers.filter(function (p) { return p.id === pid; })[0]; };
+  var shortRef = function (p) { return (p.authors[0] || p.journal) + (p.authors.length > 1 ? " et al." : "") + " (" + p.year + ")"; };
+
+  // ---------- theme ----------
+  function currentTheme() {
+    var t = document.documentElement.getAttribute("data-theme");
+    if (t) return t;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    $("theme-btn").textContent = t === "dark" ? "ライト表示" : "ダーク表示";
+    store.set("demo-theme", t);
+  }
+  var saved = store.get("demo-theme");
+  if (saved === "dark" || saved === "light") document.documentElement.setAttribute("data-theme", saved);
+
+  // ---------- index ----------
+  var INDEX = {};
+  function tableText(t) { return [t.label, t.caption].concat(t.head.map(function (r) { return r.join(" "); })).concat(t.rows.map(function (r) { return r.join(" "); })).join(" "); }
+  function index() {
+    if (INDEX[state.col]) return INDEX[state.col];
+    var u = [];
+    C().papers.forEach(function (p) {
+      p.abstract.forEach(function (t, i) { u.push({ p: p, cat: "abstract", loc: "a" + i, sec: "Abstract", text: t }); });
+      p.sections.forEach(function (s, si) { s.paras.forEach(function (t, pi) { u.push({ p: p, cat: s.cat, loc: "s" + si + "p" + pi, sec: s.title, text: t }); }); });
+      p.tables.forEach(function (t, ti) { u.push({ p: p, cat: "table", loc: "t" + ti, sec: t.label + " " + t.caption, text: tableText(t) }); });
+    });
+    INDEX[state.col] = u;
+    return u;
+  }
+  function paraText(p, loc) {
+    var m = /^s(\d+)p(\d+)$/.exec(loc), a = /^a(\d+)$/.exec(loc);
+    if (m) return p.sections[+m[1]].paras[+m[2]];
+    if (a) return p.abstract[+a[1]];
+    return "";
+  }
+  function locLabel(p, loc) {
+    var m = /^s(\d+)$|^s(\d+)p/.exec(loc);
+    if (/^a/.test(loc)) return "要旨";
+    if (m) { var s = p.sections[+(m[1] || m[2])]; return CAT[s.cat] + "　" + s.title; }
+    return "";
+  }
+
+  // ---------- header ----------
+  function renderHeader() {
+    $("col").innerHTML = Object.keys(DATA).map(function (k) { return '<option value="' + k + '"' + (k === state.col ? " selected" : "") + ">" + esc(DATA[k].name) + "（" + DATA[k].papers.length + "本）</option>"; }).join("");
+    document.querySelectorAll("[data-tab]").forEach(function (b) { b.setAttribute("aria-selected", String(!state.guide && b.dataset.tab === state.tab)); });
+    $("guide-btn").setAttribute("aria-pressed", String(state.guide));
+    ["overview", "search", "values", "kg", "qa", "papers"].forEach(function (t) { $("v-" + t).hidden = state.guide || t !== state.tab; });
+    $("v-guide").hidden = !state.guide;
+    $("foot").innerHTML = "データ：" + esc(C().source) + "。各論文のライセンスはCC BY 4.0で、著作権は各著者に帰属します。RightFind XMLも同じJATS形式で論文XMLを提供します。";
+  }
+  function setTab(t) { state.tab = t; state.guide = false; renderHeader(); render(); window.scrollTo(0, 0); }
+
+  // ---------- overview ----------
+  function renderOverview() {
+    var ps = C().papers, paras = 0, tabs = 0, figs = 0, refs = 0, journals = {}, years = ps.map(function (p) { return +p.year; }), cats = {};
+    ps.forEach(function (p) {
+      tabs += p.tables.length; figs += p.figs.length; refs += p.refs;
+      journals[p.journal] = (journals[p.journal] || 0) + 1;
+      p.sections.forEach(function (s) { paras += s.paras.length; cats[s.cat] = (cats[s.cat] || 0) + s.paras.length; });
+    });
+    var jl = Object.keys(journals).sort(function (a, b) { return journals[b] - journals[a]; });
+    var g = DATA[state.col].kg;
+    $("v-overview").innerHTML =
+      '<div class="vhead"><h2>' + esc(C().name) + '</h2><button type="button" class="lk small" data-guide="g-collection">このモードの解説</button></div>' +
+      '<p class="lead">' + esc(C().desc) + "以降の全文検索、値の抽出、ナレッジグラフ、根拠つき回答は、すべてこのコレクションを土台にしています。</p>" +
+      '<div class="block"><h3>収録内容</h3><dl class="kv num">' +
+      "<dt>論文</dt><dd>" + ps.length + "本（" + Math.min.apply(null, years) + "〜" + Math.max.apply(null, years) + "年、" + jl.length + "誌）</dd>" +
+      "<dt>本文の段落</dt><dd>" + paras.toLocaleString() + "（序論 " + (cats.intro || 0) + "・方法 " + (cats.methods || 0) + "・結果 " + (cats.results || 0) + "・考察 " + (cats.discussion || 0) + "・結論 " + (cats.conclusion || 0) + "・その他 " + (cats.other || 0) + "）</dd>" +
+      "<dt>表</dt><dd>" + tabs + "（見出しとセル単位で構造化）</dd>" +
+      "<dt>図の説明文</dt><dd>" + figs + "</dd>" +
+      "<dt>参考文献</dt><dd>" + refs.toLocaleString() + "件</dd>" +
+      "<dt>ナレッジグラフ</dt><dd>要素 " + g.nodes.length + "・つながり " + g.edges.length + "</dd>" +
+      "<dt>ライセンス</dt><dd>すべてCC BY 4.0（論文ごとにXMLの &lt;permissions&gt; に記載）</dd>" +
+      '<dt>収録条件</dt><dd class="small">' + esc(C().query) + "</dd>" +
+      "<dt>取得日</dt><dd>" + esc(C().fetched) + "</dd></dl></div>" +
+      '<div class="block"><h3>雑誌別の本数</h3><div class="scroll"><table class="t"><thead><tr><th>雑誌</th><th class="n">本数</th></tr></thead><tbody>' +
+      jl.map(function (j) { return "<tr><td>" + esc(j) + '</td><td class="n">' + journals[j] + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
+  }
+
+  // ---------- search ----------
+  function terms() { return $("q").value.toLowerCase().split(/\s+/).filter(Boolean); }
+  function highlight(s, ts) {
+    var out = esc(s);
+    ts.forEach(function (t) { out = out.replace(new RegExp("(" + esc(t).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "gi"), "<mark>$1</mark>"); });
+    return out;
+  }
+  function snippet(text, ts) {
+    var low = text.toLowerCase(), pos = -1;
+    ts.forEach(function (t) { var i = low.indexOf(t); if (i >= 0 && (pos < 0 || i < pos)) pos = i; });
+    var start = Math.max(0, pos - 140), end = Math.min(text.length, Math.max(pos, 0) + 260);
+    return highlight((start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : ""), ts);
+  }
+  function bestSentence(text, ts) {
+    var ss = text.split(SPLIT), best = ss[0], score = -1;
+    ss.forEach(function (s) { var l = s.toLowerCase(), n = ts.filter(function (t) { return l.indexOf(t) >= 0; }).length; if (n > score) { score = n; best = s; } });
+    return best.length > 320 ? best.slice(0, 320) + "…" : best;
+  }
+  function runSearch() {
+    var ts = terms();
+    $("q-purpose").innerHTML = PURPOSES.map(function (x) { return '<button type="button" data-purpose="' + x[0] + '" aria-pressed="' + (state.purpose === x[0]) + '">' + x[1] + "</button>"; }).join("");
+    var all = [], counts = {}, first = {};
+    if (ts.length) index().forEach(function (u) {
+      var low = u.text.toLowerCase();
+      if (ts.every(function (t) { return low.indexOf(t) >= 0; })) { all.push(u); counts[u.cat] = (counts[u.cat] || 0) + 1; if (!first[u.cat]) first[u.cat] = u; }
+    });
+    var peekCats = ["intro", "methods", "results", "discussion", "table", "abstract"];
+    $("q-peek").innerHTML = '<thead><tr><th>セクション</th><th class="n">該当</th><th>書かれ方の例（最初に見つかった文）</th></tr></thead><tbody>' +
+      peekCats.map(function (c) {
+        var u = first[c];
+        var ex = !u ? '<span class="muted">該当なし</span>' : c === "table"
+          ? esc(u.p.tables[+u.loc.slice(1)].label + "　" + u.p.tables[+u.loc.slice(1)].caption) + '　<button type="button" class="lk small" data-open="' + u.p.id + '" data-loc="' + u.loc + '">表を開く</button>'
+          : highlight(bestSentence(u.text, ts), ts) + '　<button type="button" class="lk small" data-open="' + u.p.id + '" data-loc="' + u.loc + '">' + esc(shortRef(u.p)) + "</button>";
+        return "<tr><td>" + CAT[c] + '</td><td class="n">' + (counts[c] || 0) + "</td><td>" + ex + "</td></tr>";
+      }).join("") + "</tbody>";
+    var want = PURPOSES.filter(function (x) { return x[0] === state.purpose; })[0][2];
+    var hits = all.filter(function (u) { return want.indexOf(u.cat) >= 0; });
+    var papers = {}; hits.forEach(function (u) { papers[u.p.id] = 1; });
+    $("q-sum").innerHTML = ts.length ? '<span class="num">' + hits.length + "件（" + Object.keys(papers).length + "本）</span>" + (all.length !== hits.length ? '<span class="muted">　すべての箇所では ' + all.length + " 件</span>" : "") : "";
+    $("q-hits").innerHTML = hits.slice(0, 150).map(function (u) {
+      return '<li><span class="where"><span class="sec-label">' + CAT[u.cat] + "</span>" + esc(u.sec.slice(0, 90)) + "</span><span>" + snippet(u.text, ts) + "</span>" +
+        '<span class="where"><button type="button" class="lk" data-open="' + u.p.id + '" data-loc="' + u.loc + '">' + esc(u.p.title) + "</button>　" + esc(shortRef(u.p)) + "・" + esc(u.p.journal) + "</span></li>";
+    }).join("") + (hits.length > 150 ? '<li class="muted small">先頭の150件を表示しています。</li>' : "");
+  }
+
+  // ---------- values ----------
+  function headerOf(t) {
+    var head = t.head, rows = t.rows;
+    if (!head.length && rows.length > 1 && rows[0].some(function (c) { return /[a-z]/i.test(c) && !/^[\d.\s±()–-]+$/.test(c); })) { head = [rows[0]]; rows = rows.slice(1); }
+    var w = Math.max.apply(null, [0].concat(rows.map(function (r) { return r.length; })).concat(head.map(function (r) { return r.length; })));
+    var cols = [];
+    for (var j = 0; j < w; j++) {
+      var parts = [];
+      head.forEach(function (r) { var v = r[j - (w - r.length)]; if (v && parts.indexOf(v) < 0) parts.push(v); });
+      cols.push(parts.join(" / "));
+    }
+    return { cols: cols, rows: rows, w: w };
+  }
+  function collect(reText, capText) {
+    var re; try { re = new RegExp(reText, "i"); } catch (e) { return { error: "正規表現が正しくありません：" + e.message }; }
+    var capRe = capText ? new RegExp(capText, "i") : null, out = [], tables = 0, papers = {};
+    C().papers.forEach(function (p) {
+      p.tables.forEach(function (t, ti) {
+        var H = headerOf(t), hit = false;
+        // a table whose caption names the property (e.g. "Vicat softening temperatures") counts in every value column
+        var capHit = capRe && capRe.test(t.caption) && !H.cols.some(function (n) { return n && re.test(n); });
+        H.cols.forEach(function (name, j) {
+          if (!name || !(re.test(name) || (capHit && j > 0))) return;
+          H.rows.forEach(function (r) {
+            var off = H.w - r.length, v = (r[j - off] || "").trim();
+            if (!v || /^(-|–|—|nd|n\.d\.|NA|N\/A)$/i.test(v)) return;
+            out.push({ p: p, ti: ti, t: t, col: name, label: j - off === 0 ? "" : (r[0] || "").trim(), value: v, row: r.join(" / ") });
+            hit = true;
+          });
+        });
+        if (hit) { tables++; papers[p.id] = 1; }
+      });
+    });
+    return { rows: out, tables: tables, papers: Object.keys(papers).length };
+  }
+  function numeric(x, unit) {
+    var m = /[-−–]?\d+(\.\d+)?/.exec(x.value.replace(/,/g, ""));
+    if (!m) return null;
+    var v = parseFloat(m[0].replace(/[−–]/, "-")), col = x.col;
+    if (unit === "℃") {
+      if (/\((K)\)|\[K\]|\bK\b/.test(col) && !/°C|℃/.test(col)) return v - 273.15;
+      if (/°C|℃/.test(col) || /°C|℃/.test(x.t.caption)) return v;
+      return null;
+    }
+    if (unit === "%") return /%/.test(col) ? v : null;
+    return v;
+  }
+  var lastValues = [];
+  function renderValues() {
+    var P = C().presets;
+    $("v-presets").innerHTML = P.map(function (x, i) { return '<button type="button" data-preset="' + i + '" aria-pressed="' + (state.preset === i) + '">' + esc(x[0]) + "</button>"; }).join("");
+    if (!$("v-re").value) $("v-re").value = P[Math.max(state.preset, 0)][1];
+    var pre = state.preset >= 0 ? P[state.preset] : null;
+    var r = collect($("v-re").value, pre ? pre[2] : null);
+    if (r.error) { $("v-sum").textContent = r.error; $("v-table").innerHTML = ""; $("v-chart").innerHTML = ""; lastValues = []; return; }
+    lastValues = r.rows;
+    var unit = pre ? pre[3] : "";
+    r.rows.forEach(function (x) { x.num = numeric(x, unit); });
+    var plotted = r.rows.filter(function (x) { return x.num != null && isFinite(x.num); });
+    $("v-sum").innerHTML = '<span class="num"><b>' + r.papers + "本の論文・" + r.tables + "の表から " + r.rows.length + "行</b></span>" +
+      '<span class="muted">　手作業なら、論文を開いて表を探し、値を転記する作業です。</span>';
+    drawDots(plotted, unit);
+    $("v-chart-note").textContent = "図には単位（" + (unit || "数値") + "）が列名で確かめられる " + plotted.length + " 行を表示しています" + (unit === "℃" ? "（Kの列は℃に換算）" : "") + "。列名の一致で機械的に集めているため、測定条件の違いは「行の内容」と元の表で確認してください。";
+    $("v-table").innerHTML = '<thead><tr><th>論文</th><th>表</th><th>試料・条件</th><th>列名</th><th class="n">値</th><th>行の内容</th></tr></thead><tbody>' +
+      r.rows.map(function (x) {
+        return '<tr><td><button type="button" class="lk" data-open="' + x.p.id + '" data-loc="t' + x.ti + '">' + esc(shortRef(x.p)) + '</button></td><td class="small">' + esc(x.t.label) +
+          "</td><td>" + esc(x.label) + '</td><td class="small muted">' + esc(x.col) + '</td><td class="n">' + esc(x.value) + '</td><td class="small muted">' + esc(x.row.slice(0, 110)) + "</td></tr>";
+      }).join("") + "</tbody>";
+  }
+  function niceTicks(lo, hi, n) {
+    var span = hi - lo || 1, step = Math.pow(10, Math.floor(Math.log10(span / n))), err = span / n / step;
+    step *= err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1;
+    var t = [], s = Math.ceil(lo / step) * step;
+    for (var v = s; v <= hi + 1e-9; v += step) t.push(+v.toFixed(6));
+    return t;
+  }
+  function drawDots(rows, unit) {
+    var box = $("v-chart");
+    if (!rows.length) { box.innerHTML = '<p class="small muted">図にできる数値がありません。</p>'; $("v-bench-note").textContent = ""; return; }
+    var groups = {}, order = [];
+    rows.forEach(function (x) { if (!groups[x.p.id]) { groups[x.p.id] = []; order.push(x.p.id); } groups[x.p.id].push(x); });
+    var med = function (a) { var s = a.map(function (x) { return x.num; }).sort(function (p, q) { return p - q; }); return s[Math.floor(s.length / 2)]; };
+    order.sort(function (a, b) { return med(groups[b]) - med(groups[a]); });
+    var bench = parseFloat($("v-bench").value);
+    var vals = rows.map(function (x) { return x.num; }); if (isFinite(bench)) vals.push(bench);
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), pad = (hi - lo) * 0.04 || 1;
+    lo -= pad; hi += pad;
+    var W = 860, L = 200, R = 24, T = 14, rowH = 22, H = T + order.length * rowH + 30;
+    var x = function (v) { return L + (v - lo) / (hi - lo) * (W - L - R); };
+    var ticks = niceTicks(lo, hi, 6), s = "";
+    ticks.forEach(function (t) { s += '<line x1="' + x(t) + '" x2="' + x(t) + '" y1="' + T + '" y2="' + (H - 26) + '" stroke="var(--line)" stroke-width="1"/><text x="' + x(t) + '" y="' + (H - 10) + '" text-anchor="middle">' + t + "</text>"; });
+    order.forEach(function (pid, i) {
+      var y = T + i * rowH + rowH / 2, g = groups[pid], p = g[0].p;
+      var name = shortRef(p); if (name.length > 30) name = name.slice(0, 29) + "…";
+      s += '<text class="lbl" x="' + (L - 10) + '" y="' + (y + 4) + '" text-anchor="end">' + esc(name) + "</text>";
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="var(--line)" stroke-width="1" stroke-dasharray="1 3"/>';
+      g.forEach(function (d) {
+        var k = rows.indexOf(d);
+        s += '<circle cx="' + x(d.num) + '" cy="' + y + '" r="4.5" fill="var(--s1)" stroke="var(--bg)" stroke-width="2" data-dot="' + k + '"/>';
+        s += '<circle cx="' + x(d.num) + '" cy="' + y + '" r="10" fill="transparent" data-dot="' + k + '" data-open="' + d.p.id + '" data-loc="t' + d.ti + '" style="cursor:pointer"/>';
+      });
+    });
+    var note = "";
+    if (isFinite(bench)) {
+      s += '<line x1="' + x(bench) + '" x2="' + x(bench) + '" y1="' + (T - 6) + '" y2="' + (H - 26) + '" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="4 3"/>';
+      var above = rows.filter(function (d) { return d.num > bench; }).length;
+      note = "文献の値 " + rows.length + " 件のうち、自社の値より高いものは " + above + " 件（上位 " + Math.round(above / rows.length * 100) + "%の位置）";
+    }
+    $("v-bench-note").textContent = note;
+    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="論文ごとの値の分布">' + s + '<text x="' + (W - R) + '" y="' + (H - 10) + '" text-anchor="end">' + esc(unit) + '</text></svg><div class="tip" hidden></div>';
+    var tip = box.querySelector(".tip");
+    box.querySelector("svg").addEventListener("mousemove", function (e) {
+      var k = e.target.getAttribute && e.target.getAttribute("data-dot");
+      if (k == null) { tip.hidden = true; return; }
+      var d = rows[+k], rect = box.getBoundingClientRect();
+      tip.innerHTML = "<b>" + esc(d.value) + "</b>　" + esc(d.col) + "<br>" + esc(d.label || "―") + '<br><span class="muted">' + esc(shortRef(d.p)) + "　" + esc(d.t.label) + "</span>";
+      tip.hidden = false;
+      var left = e.clientX - rect.left + 12; if (left > rect.width - 260) left = e.clientX - rect.left - 270;
+      tip.style.left = left + "px"; tip.style.top = (e.clientY - rect.top + 12) + "px";
+    });
+    box.querySelector("svg").addEventListener("mouseleave", function () { tip.hidden = true; });
+  }
+
+  // ---------- knowledge graph ----------
+  function G() { return C().kg; }
+  function node(id) { return G().nodes.filter(function (n) { return n.id === id; })[0]; }
+  function typeLabel(t) { return G().types.filter(function (x) { return x[0] === t; })[0][1]; }
+  function typeColor(t) { var i = G().types.map(function (x) { return x[0]; }).indexOf(t); return ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s0)"][i]; }
+  function edge(a, b) { var k = [a, b].sort(); return G().edges.filter(function (e) { return e.a === k[0] && e.b === k[1]; })[0]; }
+  function evOf(e) { return !e ? [] : state.own ? e.ev.filter(function (x) { return OWN[x[3]]; }) : e.ev; }
+  function papersOf(ev) { var s = {}; ev.forEach(function (x) { s[x[0]] = 1; }); return Object.keys(s).length; }
+  function strength(e) { return papersOf(evOf(e)); }
+  function neighbors(id) {
+    var out = [];
+    G().edges.forEach(function (e) {
+      if (e.a !== id && e.b !== id) return;
+      var n = strength(e); if (!n) return;
+      out.push({ id: e.a === id ? e.b : e.a, n: n, e: e });
+    });
+    return out.sort(function (p, q) { return q.n - p.n; });
+  }
+  function renderKG() {
+    document.querySelectorAll("[data-kgmode]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.kgmode === state.kgmode)); });
+    $("kg-own").checked = state.own;
+    if (state.kgmode === "matrix") renderMatrix(); else renderGraph();
+    renderEvidence();
+  }
+  function renderMatrix() {
+    var g = G();
+    var byType = function (types) { return [].concat.apply([], types.map(function (t) { return g.nodes.filter(function (n) { return n.type === t; }); })); };
+    var rows = byType(g.rows), cols = byType(g.cols);
+    var max = 1, cells = {};
+    rows.forEach(function (r) { cols.forEach(function (c) { var v = strength(edge(r.id, c.id)); cells[r.id + "|" + c.id] = v; if (v > max) max = v; }); });
+    var h = '<div class="scroll"><table class="mx"><thead><tr><th></th>' + g.cols.map(function (t) {
+      return '<th class="grp" style="height:auto" colspan="' + cols.filter(function (c) { return c.type === t; }).length + '">' + esc(typeLabel(t)) + "</th>";
+    }).join("") + "</tr><tr><th></th>" + cols.map(function (c) { return "<th><span>" + esc(c.label) + "</span></th>"; }).join("") + "</tr></thead><tbody>";
+    var lastType = null;
+    rows.forEach(function (r) {
+      if (r.type !== lastType) { h += '<tr><th class="grp" colspan="' + (cols.length + 1) + '">' + esc(typeLabel(r.type)) + "</th></tr>"; lastType = r.type; }
+      h += "<tr><th>" + esc(r.label) + "</th>" + cols.map(function (c) {
+        var v = cells[r.id + "|" + c.id], key = r.id + "|" + c.id, sel = state.cell === key ? " sel" : "";
+        if (!v) return '<td class="z' + sel + '" title="' + esc(r.label + " × " + c.label) + '：報告なし">·</td>';
+        var pct = Math.round(12 + 48 * v / max);
+        return '<td class="' + sel.trim() + '" data-cell="' + key + '" style="background:color-mix(in srgb, var(--s1) ' + pct + '%, transparent)" title="' + esc(r.label + " × " + c.label) + "：" + v + '本">' + v + "</td>";
+      }).join("") + "</tr>";
+    });
+    h += "</tbody></table></div>";
+    var colTypes = g.cols.map(typeLabel).join("・");
+    $("kg-body").innerHTML = '<p class="small muted">行は' + g.rows.map(typeLabel).join("・") + "、列は" + colTypes + "。数字は、同じ文でその2つに触れている論文の数です（色が濃いほど多い）。「·」はこのコレクションで報告が見つからない組み合わせです。数字をクリックすると根拠の文を表示します。</p>" + h;
+    if (!state.cell) {
+      var best = null;
+      rows.forEach(function (r) { cols.forEach(function (c) { var v = cells[r.id + "|" + c.id]; if (v && (!best || v > best.v)) best = { k: r.id + "|" + c.id, v: v }; }); });
+      if (best) state.cell = best.k;
+    }
+  }
+  function renderGraph() {
+    var g = G();
+    if (!state.center) state.center = C().kgCenter;
+    var c = node(state.center), nb = neighbors(state.center).filter(function (x) { return node(x.id); }).slice(0, 18);
+    var typeIdx = function (t) { return g.types.map(function (x) { return x[0]; }).indexOf(t); };
+    nb.sort(function (p, q) { return typeIdx(node(p.id).type) - typeIdx(node(q.id).type) || q.n - p.n; });
+    var W = 760, H = 520, cx = W / 2, cy = H / 2, rad = 190, maxn = Math.max.apply(null, [1].concat(nb.map(function (x) { return x.n; })));
+    var s = "";
+    var pos = nb.map(function (x, i) { var a = -Math.PI / 2 + i * 2 * Math.PI / nb.length; return { x: cx + rad * Math.cos(a), y: cy + rad * Math.sin(a), a: a }; });
+    nb.forEach(function (x, i) { s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + pos[i].x + '" y2="' + pos[i].y + '" stroke="var(--strong-line)" stroke-width="' + (1 + 5 * x.n / maxn).toFixed(1) + '"/>'; });
+    nb.forEach(function (x, i) {
+      var n = node(x.id), p = pos[i], ca = Math.cos(p.a), anchor = Math.abs(ca) < 0.2 ? "middle" : ca > 0 ? "start" : "end";
+      var tx = p.x + (anchor === "middle" ? 0 : ca > 0 ? 12 : -12), ty = p.y + (anchor === "middle" ? (Math.sin(p.a) > 0 ? 22 : -14) : 4);
+      var sel = state.cell === [state.center, x.id].sort().join("|");
+      s += '<g class="node" data-nb="' + x.id + '"><circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="transparent"/>' +
+        '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (sel ? 9 : 7) + '" fill="' + typeColor(n.type) + '" stroke="' + (sel ? "var(--fg)" : "var(--bg)") + '" stroke-width="2"/>' +
+        '<text x="' + tx + '" y="' + ty + '" text-anchor="' + anchor + '" style="fill:var(--fg)">' + esc(n.label) + ' <tspan style="fill:var(--muted)">' + x.n + "</tspan></text></g>";
+    });
+    s += '<circle cx="' + cx + '" cy="' + cy + '" r="13" fill="' + typeColor(c.type) + '" stroke="var(--bg)" stroke-width="3"/><text x="' + cx + '" y="' + (cy + 32) + '" text-anchor="middle" style="fill:var(--fg);font-weight:700;font-size:13px">' + esc(c.label) + "</text>";
+
+    // indirect links: not directly linked to the center, but sharing several neighbours with it
+    var direct = {}; neighbors(state.center).forEach(function (x) { direct[x.id] = 1; });
+    var skip = function (id) { var n = node(id); return !n || n.type === "method"; };
+    var mine = Object.keys(direct).filter(function (id) { return !skip(id); });
+    var cand = [];
+    g.nodes.forEach(function (n) {
+      if (n.id === state.center || direct[n.id] || n.type === "method") return;
+      var theirs = {}; neighbors(n.id).forEach(function (x) { theirs[x.id] = 1; });
+      var shared = mine.filter(function (id) { return theirs[id]; });
+      if (shared.length >= 2) cand.push({ n: n, shared: shared });
+    });
+    cand.sort(function (p, q) { return q.shared.length - p.shared.length; });
+
+    var opts = g.types.map(function (t) {
+      return '<optgroup label="' + esc(t[1]) + '">' + g.nodes.filter(function (n) { return n.type === t[0]; }).map(function (n) { return '<option value="' + n.id + '"' + (n.id === state.center ? " selected" : "") + ">" + esc(n.label) + "（" + n.papers + "本）</option>"; }).join("") + "</optgroup>";
+    }).join("");
+    $("kg-body").innerHTML =
+      '<div class="bar"><label for="kg-center" class="small muted">中心の要素</label><select id="kg-center">' + opts + "</select>" +
+      '<div class="legend">' + g.types.map(function (t) { return '<span><i style="background:' + typeColor(t[0]) + '"></i>' + esc(t[1]) + "</span>"; }).join("") + "</div></div>" +
+      '<div class="kgrid"><div class="chart graph"><svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + esc(c.label) + 'とつながる要素">' + s + "</svg>" +
+      '<p class="small muted">線の太さと数字は、同じ文で両方に触れている論文の数です。要素をクリックすると根拠の文を表示します。</p></div>' +
+      '<div class="block"><h3>間接的なつながり</h3><p class="small muted">「' + esc(c.label) + "」と同じ文で述べられた報告はないものの、共通の相手を複数持つ要素です。直接の検討がまだない組み合わせとして、仮説を考える手がかりになります。</p>" +
+      (cand.length ? '<table class="t"><thead><tr><th>要素</th><th>共通の相手</th></tr></thead><tbody>' + cand.slice(0, 10).map(function (x) {
+        return '<tr><td><button type="button" class="lk" data-center="' + x.n.id + '">' + esc(x.n.label) + '</button><div class="small muted">' + esc(typeLabel(x.n.type)) + "</div></td><td class=\"small\">" + x.shared.map(function (id) { return esc(node(id).label); }).join("、") + "</td></tr>";
+      }).join("") + "</tbody></table>" : '<p class="small">条件に合う要素はありません。チェックを外して「すべての文」を対象にすると、候補が変わります。</p>') + "</div></div>";
+    if (!state.cell || state.cell.split("|").indexOf(state.center) < 0) state.cell = nb.length ? [state.center, nb[0].id].sort().join("|") : null;
+  }
+  function renderEvidence() {
+    var box = $("kg-ev");
+    if (!state.cell) { box.innerHTML = ""; return; }
+    var ab = state.cell.split("|"), a = node(ab[0]), b = node(ab[1]), e = edge(ab[0], ab[1]), ev = evOf(e);
+    var res = [a, b].map(function (n) { try { return new RegExp("(" + n.pat + ")", "gi"); } catch (er) { return null; } });
+    var pol = { "1": "増加・向上の表現", "-1": "減少・抑制の表現", "0": "" };
+    var up = ev.filter(function (x) { return x[4] === 1; }).length, down = ev.filter(function (x) { return x[4] === -1; }).length;
+    var byCat = {}; (e ? e.ev : []).forEach(function (x) { byCat[x[3]] = (byCat[x[3]] || 0) + 1; });
+    var h = '<div class="rule"></div><div class="vhead"><h3>' + esc(a.label) + " × " + esc(b.label) + '　<span class="muted num" style="font-weight:400">根拠 ' + ev.length + "文・" + papersOf(ev) + "本</span></h3></div>" +
+      '<p class="small muted">文の出どころ（すべて）：' + CAT_ORDER.filter(function (c) { return byCat[c]; }).map(function (c) { return CAT[c] + " " + byCat[c]; }).join("・") +
+      "　｜　表示中の文のうち、増加・向上の表現 " + up + "・減少・抑制の表現 " + down + "（文中の語による推定）</p>";
+    var P = C().papers;
+    h += '<ol class="evl">' + ev.slice(0, state.evShown).map(function (x) {
+      var p = P[x[0]], text = (paraText(p, x[1]).split(SPLIT)[x[2]] || "");
+      var out = esc(text);
+      res.forEach(function (re) { if (re) out = out.replace(re, "<mark>$1</mark>"); });
+      return '<li><span class="where"><span class="sec-label">' + CAT[x[3]] + "</span>" + (pol[String(x[4])] ? esc(pol[String(x[4])]) + "　" : "") + "</span><span>" + out + "</span>" +
+        '<span class="where"><button type="button" class="lk" data-open="' + p.id + '" data-loc="' + x[1] + '">' + esc(p.title) + "</button>　" + esc(shortRef(p)) + "</span></li>";
+    }).join("") + "</ol>" + (ev.length > state.evShown ? '<button type="button" class="btn" id="ev-more">さらに表示（残り ' + (ev.length - state.evShown) + "文）</button>" : "");
+    box.innerHTML = h;
+  }
+
+  // ---------- QA ----------
+  function resolve(ref) {
+    var parts = ref.split(":"), p = byId(parts[0]), loc = parts[1];
+    if (!p) return null;
+    var m = /^s(\d+)p(\d+)$/.exec(loc), t = /^t(\d+)$/.exec(loc);
+    if (m) { var s = p.sections[+m[1]]; return { p: p, loc: loc, where: CAT[s.cat] + "　" + s.title, text: s.paras[+m[2]] }; }
+    if (t) { var tb = p.tables[+t[1]]; return { p: p, loc: loc, where: "表　" + tb.label + " " + tb.caption, table: tb }; }
+    return null;
+  }
+  function renderQA() {
+    var Q = C().qa; if (state.qa >= Q.length) state.qa = 0;
+    var qa = Q[state.qa], refs = [], num = {};
+    var cite = function (r) { if (!(r in num)) { refs.push(r); num[r] = refs.length; } return num[r]; };
+    var body = qa.points.map(function (pt) {
+      return "<li>" + esc(pt.text) + "<sup>" + pt.cites.map(function (r) { var n = cite(r); return '<button type="button" class="lk" data-cite="' + n + '">[' + n + "]</button>"; }).join("") + "</sup></li>";
+    }).join("");
+    var nP = {}, nPara = 0, nTab = 0;
+    var list = refs.map(function (r, i) {
+      var x = resolve(r); if (!x) return "";
+      nP[x.p.id] = 1; if (x.table) nTab++; else nPara++;
+      var quote = x.table ? '<div class="scroll quote">' + tableHTML(x.table, 8) + "</div>" : '<div class="quote">' + esc(x.text) + "</div>";
+      return '<li id="cite-' + (i + 1) + '"><button type="button" class="lk" data-open="' + x.p.id + '" data-loc="' + x.loc + '">' + esc(x.p.title) + "</button>" +
+        '<div class="ctx">' + esc(shortRef(x.p)) + "・" + esc(x.p.journal) + "　｜　" + esc(x.where.slice(0, 120)) + "</div><details><summary>" + (x.table ? "表を表示" : "段落を表示") + "</summary>" + quote + "</details></li>";
+    }).join("");
+    $("v-qa").innerHTML =
+      '<div class="vhead"><h2>根拠つき回答</h2><button type="button" class="lk small" data-guide="g-qa">このモードの解説</button></div>' +
+      '<p class="lead">コレクションの段落と表だけを根拠にした回答の例です。各文に根拠の番号が付いていて、元の論文の該当箇所を開けます。社内AIにコレクションを組み込むと、このような形で回答できます。</p>' +
+      '<div class="qa"><p class="q">Q. ' + esc(qa.q) + "</p><ul>" + body + "</ul>" + (qa.note ? '<p class="small muted">' + esc(qa.note) + "</p>" : "") +
+      "<h3>根拠（" + Object.keys(nP).length + "本の論文から、本文の段落 " + nPara + "・表 " + nTab + '）</h3><ol class="cites">' + list + "</ol></div>";
+  }
+
+  // ---------- papers / reader ----------
+  function tableHTML(t, limit) {
+    var H = headerOf(t), rows = limit ? H.rows.slice(0, limit) : H.rows;
+    return '<table class="t"><thead><tr>' + H.cols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+      rows.map(function (r) { var off = H.w - r.length, cells = []; for (var j = 0; j < H.w; j++) cells.push("<td>" + esc(r[j - off] || "") + "</td>"); return "<tr>" + cells.join("") + "</tr>"; }).join("") +
+      "</tbody></table>" + (limit && H.rows.length > limit ? '<p class="small muted">ほか' + (H.rows.length - limit) + "行</p>" : "");
+  }
+  function renderPapers() {
+    if (state.paper) return renderReader();
+    var ps = C().papers.slice().sort(function (a, b) { return b.year - a.year || a.title.localeCompare(b.title); });
+    $("v-papers").innerHTML = '<div class="vhead"><h2>論文</h2><button type="button" class="lk small" data-guide="g-collection">このモードの解説</button></div>' +
+      '<div class="scroll"><table class="t"><thead><tr><th>タイトル</th><th>雑誌</th><th>年</th><th class="n">段落</th><th class="n">表</th></tr></thead><tbody>' +
+      ps.map(function (p) {
+        var n = p.sections.reduce(function (a, s) { return a + s.paras.length; }, 0);
+        return '<tr><td><button type="button" class="lk" data-open="' + p.id + '">' + esc(p.title) + '</button></td><td class="small">' + esc(p.journal) + '</td><td class="num">' + p.year + '</td><td class="n">' + n + '</td><td class="n">' + p.tables.length + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+  function renderReader() {
+    var p = byId(state.paper);
+    if (!p) { state.paper = null; return renderPapers(); }
+    var toc = ['<button type="button" class="lk" data-back="1">← 論文の一覧</button>', '<button type="button" class="lk" data-jump="abs">Abstract</button>'];
+    var h = '<div class="doc"><p class="title">' + esc(p.title) + '</p><p class="small">' + esc(p.authors.join(", ")) + "　" + esc(p.journal) + " " + p.year + "</p>" +
+      '<dl class="kv small"><dt>DOI</dt><dd>' + (p.doi ? '<a href="https://doi.org/' + esc(p.doi) + '" target="_blank" rel="noopener">' + esc(p.doi) + "</a>" : "―") + "</dd>" +
+      "<dt>PMCID</dt><dd>" + esc(p.id) + "</dd><dt>ライセンス</dt><dd>" + (p.license.url ? '<a href="' + esc(p.license.url) + '" target="_blank" rel="noopener">' + esc(p.license.url.replace(/^https?:\/\//, "")) + "</a>" : "CC BY") + ' <span class="tag">&lt;permissions&gt;</span></dd>' +
+      (p.kwd.length ? "<dt>キーワード</dt><dd>" + esc(p.kwd.join("; ")) + ' <span class="tag">&lt;kwd-group&gt;</span></dd>' : "") + "</dl>" +
+      '<h2 id="r-abs">Abstract <span class="tag">&lt;abstract&gt;</span></h2>' + p.abstract.map(function (t, i) { return '<p class="para" id="r-a' + i + '">' + esc(t) + "</p>"; }).join("");
+    p.sections.forEach(function (s, si) {
+      if (s.title) {
+        var lv = Math.min(s.level, 3);
+        toc.push('<button type="button" class="lk l' + lv + '" data-jump="s' + si + '">' + esc(s.title) + "</button>");
+        h += (lv === 1 ? "<h2" : "<h3") + ' id="r-s' + si + '">' + esc(s.title) + (lv === 1 ? ' <span class="tag">&lt;sec&gt; ' + CAT[s.cat] + "</span></h2>" : "</h3>");
+      }
+      s.paras.forEach(function (t, pi) { h += '<p class="para" id="r-s' + si + "p" + pi + '">' + esc(t) + "</p>"; });
+    });
+    if (p.tables.length) {
+      toc.push('<button type="button" class="lk" data-jump="tables">表（' + p.tables.length + "）</button>");
+      h += '<h2 id="r-tables">表 <span class="tag">&lt;table-wrap&gt;</span></h2>';
+      p.tables.forEach(function (t, ti) {
+        h += '<div class="tblock" id="r-t' + ti + '"><p><b>' + esc(t.label) + "</b>　" + esc(t.caption) + '</p><div class="scroll">' + tableHTML(t) + "</div>" +
+          (t.raw ? '<details><summary>XMLを表示</summary><pre class="raw">' + esc(t.raw) + (t.raw.length >= 3500 ? "\n…" : "") + "</pre></details>" : "") + "</div>";
+      });
+    }
+    if (p.figs.length) {
+      toc.push('<button type="button" class="lk" data-jump="figs">図の説明文（' + p.figs.length + "）</button>");
+      h += '<h2 id="r-figs">図の説明文 <span class="tag">&lt;fig&gt;&lt;caption&gt;</span></h2>' + p.figs.map(function (f) { return '<p class="small"><b>' + esc(f.label) + "</b>　" + esc(f.caption) + "</p>"; }).join("");
+    }
+    h += '<p class="small muted">参考文献 ' + p.refs + '件 <span class="tag">&lt;ref-list&gt;</span></p></div>';
+    $("v-papers").innerHTML = '<div class="reader"><nav class="toc" aria-label="目次">' + toc.join("") + "</nav>" + h + "</div>";
+    if (state.focus) { var el = $("r-" + state.focus); if (el) { el.classList.add("hl"); setTimeout(function () { el.scrollIntoView({ block: "center" }); }, 0); } }
+  }
+  function openPaper(pid, loc) { state.paper = pid; state.focus = loc || null; state.tab = "papers"; state.guide = false; renderHeader(); renderPapers(); if (!loc) window.scrollTo(0, 0); }
+
+  // ---------- guide ----------
+  function renderGuide(anchor) {
+    $("v-guide").innerHTML = '<div class="guide"><nav class="gnav" aria-label="解説の目次">' +
+      GUIDE.map(function (g) { return '<button type="button" class="lk" data-gjump="' + g.id + '">' + esc(g.nav) + "</button>"; }).join("") +
+      '</nav><div class="gdoc">' + GUIDE.map(function (g) { return '<section class="gsec" id="' + g.id + '">' + g.html + "</section>"; }).join("") + "</div></div>";
+    if (anchor) setTimeout(function () { var el = $(anchor); if (el) el.scrollIntoView({ block: "start" }); }, 0); else window.scrollTo(0, 0);
+  }
+  function openGuide(anchor) { state.guide = true; renderHeader(); renderGuide(anchor); }
+
+  // ---------- render ----------
+  function render() {
+    if (state.guide) return renderGuide();
+    if (state.tab === "overview") renderOverview();
+    if (state.tab === "search") { if (!$("q").value) $("q").value = C().searchDefault; runSearch(); }
+    if (state.tab === "values") renderValues();
+    if (state.tab === "kg") renderKG();
+    if (state.tab === "qa") renderQA();
+    if (state.tab === "papers") renderPapers();
+  }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("button, td[data-cell], g[data-nb], circle[data-open]"); if (!b) return;
+    var d = b.dataset || {};
+    if (d.tab) { if (d.tab === "papers") state.paper = null; setTab(d.tab); }
+    else if (d.open) openPaper(d.open, d.loc);
+    else if (d.guide) openGuide(d.guide);
+    else if (d.gjump) { var el = $(d.gjump); if (el) el.scrollIntoView({ block: "start" }); }
+    else if (d.back) { state.paper = null; renderPapers(); window.scrollTo(0, 0); }
+    else if (d.jump) { var j = $("r-" + d.jump); if (j) j.scrollIntoView({ block: "start" }); }
+    else if (d.purpose) { state.purpose = d.purpose; runSearch(); }
+    else if (d.preset) { state.preset = +d.preset; $("v-re").value = C().presets[state.preset][1]; $("v-bench").value = ""; renderValues(); }
+    else if (d.kgmode) { state.kgmode = d.kgmode; state.cell = null; state.evShown = 30; renderKG(); }
+    else if (d.cell) { state.cell = d.cell; state.evShown = 30; renderKG(); $("kg-ev").scrollIntoView({ block: "start" }); }
+    else if (d.nb) { state.cell = [state.center, d.nb].sort().join("|"); state.evShown = 30; renderKG(); }
+    else if (d.center) { state.center = d.center; state.cell = null; state.evShown = 30; renderKG(); window.scrollTo(0, $("v-kg").offsetTop - 120); }
+    else if (d.qa) { state.qa = +d.qa; renderQA(); }
+    else if (d.cite) { var c = $("cite-" + d.cite); if (c) { c.scrollIntoView({ block: "center" }); var det = c.querySelector("details"); if (det) det.open = true; } }
+    else if (b.id === "ev-more") { state.evShown += 50; renderEvidence(); }
+    else if (b.id === "guide-btn") { if (state.guide) { state.guide = false; renderHeader(); render(); } else openGuide(); }
+    else if (b.id === "theme-btn") { applyTheme(currentTheme() === "dark" ? "light" : "dark"); }
+    else if (b.id === "q-go") runSearch();
+    else if (b.id === "v-go") { state.preset = -1; renderValues(); }
+    else if (b.id === "v-copy" || b.id === "kg-copy") {
+      var tsv, st = $(b.id === "v-copy" ? "v-copied" : "kg-copied"), n;
+      if (b.id === "v-copy") {
+        tsv = ["論文\tDOI\t表\t試料・条件\t列名\t値"].concat(lastValues.map(function (x) { return [shortRef(x.p), x.p.doi, x.t.label, x.label, x.col, x.value].join("\t"); })).join("\n"); n = lastValues.length;
+      } else {
+        var es = G().edges.filter(function (x) { return strength(x) > 0; });
+        tsv = ["要素A\t種類A\t要素B\t種類B\t論文数\t根拠の文数"].concat(es.map(function (x) { var A = node(x.a), B = node(x.b); return [A.label, typeLabel(A.type), B.label, typeLabel(B.type), strength(x), evOf(x).length].join("\t"); })).join("\n"); n = es.length;
+      }
+      try { navigator.clipboard.writeText(tsv).then(function () { st.textContent = n + "行をコピーしました"; }, function () { st.textContent = "コピーできませんでした"; }); } catch (err) { st.textContent = "コピーできませんでした"; }
+    }
+  });
+  $("q").addEventListener("keydown", function (e) { if (e.key === "Enter") runSearch(); });
+  $("v-re").addEventListener("keydown", function (e) { if (e.key === "Enter") { state.preset = -1; renderValues(); } });
+  $("v-bench").addEventListener("input", function () { renderValues(); });
+  document.addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.id === "col") { state.col = t.value; state.paper = null; state.preset = 0; state.qa = 0; state.cell = null; state.center = null; $("q").value = ""; $("v-re").value = ""; $("v-bench").value = ""; renderHeader(); render(); }
+    else if (t.id === "kg-own") { state.own = t.checked; state.evShown = 30; renderKG(); }
+    else if (t.id === "kg-center") { state.center = t.value; state.cell = null; state.evShown = 30; renderKG(); }
+  });
+
+  applyTheme(currentTheme());
+  renderHeader();
+  render();
+})();
+</script>
